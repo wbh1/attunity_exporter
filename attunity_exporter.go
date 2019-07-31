@@ -37,5 +37,15 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 
-	logrus.Fatal(http.ListenAndServe(":"+*port, nil))
+	logrus.Info("Starting attunity_exporter on :", *port)
+
+	// Run in a goroutine so we can log that it actually started
+	ch := make(chan error)
+	go func() {
+		ch <- http.ListenAndServe(":"+*port, nil)
+	}()
+	logrus.Info("Started attunity_exporter on :", *port)
+
+	// Wait for goroutine to return a value to the channel
+	logrus.Fatal(<-ch)
 }

@@ -1,0 +1,17 @@
+weblink: "***REMOVED***"
+user: "***REMOVED***"
+timeout: 5
+password: "fakepassword"
+included_tasks:
+  - server: LUORAGW02
+    tasks:
+      - Leads API Test
+      - Leads API
+      - IPCC
+  - server: xprd04
+    tasks:
+      - BIZFLW-WHPRD
+excluded_tasks:
+  - server: LUORAGW02
+    tasks:
+      - IPCC

@@ -1,0 +1,5 @@
+user: "***REMOVED***"
+password: "fakepassword"
+timeout: 5
+included_tasks:
+excluded_tasks:

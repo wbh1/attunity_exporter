@@ -2,4 +2,13 @@ user: ""
 password: ""
 server: ""
 timeout: 10
-tasks: []
+included_tasks:
+  - server: LUORAGW02
+    tasks:
+      - Leads API Test
+      - Leads API
+      - IPCC
+excluded_tasks:
+  - server: LUORAGW02
+    tasks:
+      - IPCC

@@ -1,0 +1,17 @@
+weblink: "https://attunity.liberty.edu/attunityenterprisemanager"
+user: "prometheus_svc@university.liberty.edu"
+password: "fakepassword"
+timeout: 5
+included_tasks:
+#   - server: LUORAGW02
+#     tasks:
+#       - Leads API Test
+#       - Leads API
+#       - IPCC
+#   - server: xprd04
+#     tasks:
+#       - BIZFLW-WHPRD
+excluded_tasks:
+#   - server: LUORAGW02
+#     tasks:
+#       - IPCC

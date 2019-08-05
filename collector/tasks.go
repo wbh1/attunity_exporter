@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -172,41 +173,88 @@ func latency(hhmmss string) (time.Duration, error) {
 
 func filterExcluded(tl *[]task, excluded []string) []task {
 	filtered := *tl
-	length := len(*tl)
+	lastIndex := (len(filtered) - 1)
 
-	for _, t1 := range excluded {
+	for _, regexString := range excluded {
 		matched := false
-		for i, t2 := range *tl {
-			if t1 == t2.Name {
+		regex, err := regexp.Compile(regexString)
+		if err != nil {
+			logrus.Error(err)
+			continue
+		}
+
+		// Do not increment index on each loop.
+		// Handle incrementing inside of the loop.
+		for index := 0; index <= lastIndex; {
+
+			taskName := &filtered[index].Name
+
+			if regex.Match([]byte(*taskName)) {
+				logrus.WithFields(logrus.Fields{
+					"task_name": *taskName,
+					"regex":     regexString,
+				}).Debug("Excluding task")
+
+				// Hooray! The provided regex matched something and wasn't a waste of time.
 				matched = true
-				if i < length {
-					filtered = append(filtered[:i], filtered[i+1:]...)
-				} else {
-					filtered = filtered[:i]
-				}
-				length--
+
+				// Replace the value at the current index with the value at
+				// the last index of the slice.
+				filtered[index] = filtered[lastIndex]
+
+				// Set the value of the last index of the slice
+				// to the nil value of `task`. The value that was previously
+				// there is now at filtered[index], so we did not lose it.
+				// We will just NOT increment `index` so that the
+				// new value will get checked, too.
+				filtered[lastIndex] = task{}
+
+				// Set the `filtered` slice to be everything up to
+				// the last index, which we just set to a nil value.
+				filtered = filtered[:lastIndex]
+
+				// The last index will now be one less than before.
+				// This is the same as if we just did
+				// lastIndex = len(filtered)
+				// everytime, except this should be slightly more performant.
+				lastIndex--
+			} else {
+				// If no match was found, increment the index
+				// so that we check the next value in the `filtered` slice
+				index++
+				logrus.WithFields(logrus.Fields{
+					"task_name": *taskName,
+					"regex":     regexString,
+				}).Debug("Did not match regex")
 			}
 		}
+		// Log an error if the regex didn't match any tasks.
+		// This should warn users if they're providing a useless regex.
 		if !matched {
-			logrus.Error("No task found to exclude matching: ", t1)
+			logrus.Error("No task found to exclude matching: ", regexString)
 		}
 	}
-	return filtered[:length]
+	return filtered
 }
 
 func filterIncluded(tl *[]task, included []string) []task {
 	var filtered []task
-	for _, t1 := range included {
+	for _, regexString := range included {
+		regex, err := regexp.Compile(regexString)
+		if err != nil {
+			logrus.Error(err)
+			continue
+		}
 		matched := false
 		for _, t2 := range *tl {
-			if t1 == t2.Name {
+			if regex.Match([]byte(t2.Name)) {
 				matched = true
 				filtered = append(filtered, t2)
 				break
 			}
 		}
 		if !matched {
-			logrus.Error("No task found to include matching: ", t1)
+			logrus.Error("No task found to include matching: ", regexString)
 		}
 	}
 	return filtered

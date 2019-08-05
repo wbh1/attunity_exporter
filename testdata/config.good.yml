@@ -1,7 +1,7 @@
-weblink: "***REMOVED***"
 user: "***REMOVED***"
+password: "***REMOVED***"
+weblink: "***REMOVED***"
 timeout: 5
-password: "fakepassword"
 included_tasks:
   - server: LUORAGW02
     tasks:

@@ -62,17 +62,59 @@ func validateConfig(conf Config) (err []error) {
 		err = append(err, errors.New("Password not defined"))
 	}
 
-	if conf.Timeout == 0 {
-		err = append(err, errors.New("Timeout not defined"))
-	}
-
-	if len(conf.IncludedTasks) == 0 {
-		err = append(err, errors.New("Included tasks not defined"))
-	}
-
-	if len(conf.ExcludedTasks) == 0 {
-		err = append(err, errors.New("Excluded tasks not defined"))
-	}
-
 	return
+}
+
+func TestIncluded(t *testing.T) {
+	var (
+		cfg        = Config{}
+		goodConfig = "../testdata/config.good.yml"
+	)
+
+	f, err := ioutil.ReadFile(goodConfig)
+	if err != nil {
+		t.Error(err)
+	}
+	if err = yaml.UnmarshalStrict(f, &cfg); err != nil {
+		t.Error("Error unmarshalling config file ", goodConfig, err)
+	}
+
+	a := NewAttunityCollector(&cfg)
+
+	tasks, err := a.taskStates("xprd04")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(tasks) > 1 {
+		t.Error("More tasks returned than expected. Should only return BIZFLW-WHPRD on xprd04")
+	}
+
+}
+
+func TestExcluded(t *testing.T) {
+	var (
+		cfg        = Config{}
+		goodConfig = "../testdata/config.good.yml"
+	)
+
+	f, err := ioutil.ReadFile(goodConfig)
+	if err != nil {
+		t.Error(err)
+	}
+	if err = yaml.UnmarshalStrict(f, &cfg); err != nil {
+		t.Error("Error unmarshalling config file ", goodConfig, err)
+	}
+
+	a := NewAttunityCollector(&cfg)
+
+	tasks, err := a.taskStates("LUORAGW02")
+	if err != nil {
+		t.Error(err)
+	}
+	for _, x := range tasks {
+		if x.Name == "IPCC" {
+			t.Error("Excluded task was returned in results.")
+		}
+	}
+
 }

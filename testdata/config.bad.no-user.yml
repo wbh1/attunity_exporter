@@ -1,5 +1,4 @@
 weblink: "https://attunity.liberty.edu/attunityenterprisemanager"
-user: "prometheus_svc@university.liberty.edu"
 password: "fakepassword"
 timeout: 5
 included_tasks:

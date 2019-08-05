@@ -1,7 +1,7 @@
-weblink: "https://attunity.liberty.edu/attunityenterprisemanager"
 user: "prometheus_svc@university.liberty.edu"
+password: "SrKC4}}?H,V[W,WB"
+weblink: "https://attunity.liberty.edu/attunityenterprisemanager"
 timeout: 5
-password: "fakepassword"
 included_tasks:
   - server: LUORAGW02
     tasks:

@@ -23,7 +23,7 @@ var (
 )
 
 func main() {
-	kingpin.Version("v1.0.1")
+	kingpin.Version("v1.1.0")
 	kingpin.Parse()
 
 	if *debug {

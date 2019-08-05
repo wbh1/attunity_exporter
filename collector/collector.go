@@ -89,6 +89,10 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		client.Transport = transport
 	}
 
+	if err := validateConfig(*cfg); err != nil {
+		logrus.Fatal("Error validating config file: ", err)
+	}
+
 	// Set timeout
 	if cfg.Timeout > 0 {
 		client.Timeout = time.Duration(cfg.Timeout) * time.Second
@@ -119,6 +123,22 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		httpClient:    client,
 	}
 
+}
+
+func validateConfig(conf Config) (err []error) {
+	if conf.Link == "" {
+		err = append(err, errors.New("Link not defined"))
+	}
+
+	if conf.Username == "" {
+		err = append(err, errors.New("User not defined"))
+	}
+
+	if conf.Password == "" {
+		err = append(err, errors.New("Password not defined"))
+	}
+
+	return
 }
 
 // Describe implements the Describe method of the Prometheus Collector interface

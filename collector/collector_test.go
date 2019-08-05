@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -47,22 +46,6 @@ func TestConfigFile(t *testing.T) {
 		t.Error("Error validating valid config file ", goodConfig, errList)
 	}
 
-}
-
-func validateConfig(conf Config) (err []error) {
-	if conf.Link == "" {
-		err = append(err, errors.New("Link not defined"))
-	}
-
-	if conf.Username == "" {
-		err = append(err, errors.New("User not defined"))
-	}
-
-	if conf.Password == "" {
-		err = append(err, errors.New("Password not defined"))
-	}
-
-	return
 }
 
 func TestIncluded(t *testing.T) {

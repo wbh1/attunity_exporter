@@ -19,10 +19,16 @@ var (
 	cfg     = collector.Config{}
 	port    = kingpin.Flag("port", "the port to bind the exporter to.").Default("9103").String()
 	cfgFile = kingpin.Flag("config-file", "path the config.yml file").Default("config.yml").String()
+	debug   = kingpin.Flag("debug", "Enable debug logging").Bool()
 )
 
 func main() {
+	kingpin.Version("v1.0.1")
 	kingpin.Parse()
+
+	if *debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
 
 	f, err := ioutil.ReadFile(*cfgFile)
 	if err != nil {

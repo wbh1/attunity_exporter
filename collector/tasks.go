@@ -135,7 +135,7 @@ func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.
 	if err != nil {
 		logrus.Error(err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(taskTotalLatencyDesc, prometheus.GaugeValue, tl.Seconds(), server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)
+		ch <- prometheus.MustNewConstMetric(taskTotalLatencyDesc, prometheus.GaugeValue, tl.Seconds(), server, t.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
 	}
 
 	// Create SourceLatency metric
@@ -143,7 +143,7 @@ func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.
 	if err != nil {
 		logrus.Error(err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(taskSourceLatencyDesc, prometheus.GaugeValue, sl.Seconds(), server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)
+		ch <- prometheus.MustNewConstMetric(taskSourceLatencyDesc, prometheus.GaugeValue, sl.Seconds(), server, t.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
 	}
 
 }

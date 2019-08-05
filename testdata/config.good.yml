@@ -1,5 +1,5 @@
 user: "prometheus_svc@university.liberty.edu"
-password: "SrKC4}}?H,V[W,WB"
+password: "replacethis"
 weblink: "https://attunity.liberty.edu/attunityenterprisemanager"
 timeout: 5
 included_tasks:

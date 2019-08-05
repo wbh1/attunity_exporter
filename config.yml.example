@@ -1,6 +1,6 @@
 user: ""
 password: ""
-server: ""
+weblink: ""
 timeout: 10
 included_tasks:
   - server: LUORAGW02

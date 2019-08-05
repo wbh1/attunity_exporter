@@ -99,10 +99,16 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		logrus.Fatal(err)
 	}
 	req.Header.Set("Authorization", "Basic: "+auth)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	if resp.StatusCode != 200 {
+		body, _ := ioutil.ReadAll(resp.Body)
+		logrus.Fatalf("HTTP %d, PATH: %s; %s", resp.StatusCode, req.URL, body)
+	}
+
 	sessionID := resp.Header.Get("Enterprisemanager.apisessionid")
 
 	return &AttunityCollector{
@@ -199,6 +205,12 @@ func (a *AttunityCollector) APIRequest(path string, datastructure interface{}) (
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
 		return
+	}
+
+	if resp.StatusCode != 200 {
+		err = errors.New("Unexpected status code")
+		body, _ := ioutil.ReadAll(resp.Body)
+		return errors.Wrapf(err, "HTTP %d; PATH: %s; %s", resp.StatusCode, path, body)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)

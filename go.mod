@@ -1,4 +1,4 @@
-module bitbucket.os.liberty.edu/prom/attunity_exporter
+module github.com/wbh1/attunity_exporter
 
 go 1.12
 

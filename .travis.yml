@@ -3,6 +3,20 @@ language: go
 go:
   - 1.12.x
 
+before_install:
+  - go get github.com/mitchellh/gox
+
 script:
   - echo "Starting build"
-  - ./go-build-all
+  - gox -os="linux darwin windows" -arch="amd64" -output="attunity_exporter.." -verbose ./...
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key: $GITHUB_TOKEN
+  file:
+  - attunity_exporter.windows.amd64.exe
+  - attunity_exporter.linux.amd64
+
+on:
+  tags: true

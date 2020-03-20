@@ -19,5 +19,5 @@ deploy:
   - attunity_exporter.windows.amd64.exe
   - attunity_exporter.linux.amd64
 
-on:
-  tags: true
+  on:
+    tags: true

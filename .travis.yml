@@ -10,6 +10,7 @@ before_install:
 script:
   - echo "Starting build"
   - gox -os="linux darwin windows" -arch="amd64" -output="attunity_exporter.." -verbose ./...
+  - ls .
 
 deploy:
   provider: releases

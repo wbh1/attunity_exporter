@@ -90,12 +90,10 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		client.Transport = transport
 	}
 
-	if !cfg.Verify {
-		transport := &http.Transport{
-        		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-    		}
-		client.Transport = transport
-	}
+	transport := &http.Transport{
+       		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    	}
+	client.Transport = transport
 
 
 	if err := validateConfig(*cfg); err != nil {

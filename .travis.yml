@@ -15,7 +15,7 @@ script:
 deploy:
   provider: releases
   cleanup: true
-  api_key: $GITHUB_TOKEN
+  token: $GITHUB_TOKEN
   file:
   - attunity_exporter_windows_amd64.exe
   - attunity_exporter_linux_amd64

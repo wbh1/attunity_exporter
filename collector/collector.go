@@ -31,6 +31,7 @@ type Config struct {
 	Username      string         `yaml:"user"`
 	Password      string         `yaml:"password"`
 	Timeout       int            `yaml:"timeout,omitempty"`
+	Verify        bool           `yaml:"verify_https"`
 	IncludedTasks []*TasksFilter `yaml:"included_tasks,omitempty"`
 	ExcludedTasks []*TasksFilter `yaml:"excluded_tasks,omitempty"`
 }
@@ -88,6 +89,14 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		}
 		client.Transport = transport
 	}
+
+	if !cfg.Verify {
+		transport := &http.Transport{
+        		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    		}
+		client.Transport = transport
+	}
+
 
 	if err := validateConfig(*cfg); err != nil {
 		logrus.Fatal("Error validating config file: ", err)

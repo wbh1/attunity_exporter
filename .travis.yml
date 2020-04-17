@@ -11,18 +11,16 @@ script:
   - echo "Starting build"
   - ./go-build.sh
   - ls .
-  - mv attunity_exporter_windows_amd64.exe attunity_exporter_windows_amd64-$TRAVIS_TAG.exe
-  - mv attunity_exporter_linux_amd64 attunity_exporter_linux_amd64-$TRAVIS_TAG
-  - mv attunity_exporter_darwin_amd64 attunity_exporter_darwin_amd64-$TRAVIS_TAG
 
 deploy:
   provider: releases
   skip_cleanup: true
   token: $GITHUB_TOKEN
+  file_glob: true
   file:
-  - attunity_exporter_windows_amd64-$TRAVIS_TAG.exe
-  - attunity_exporter_linux_amd64-$TRAVIS_TAG
-  - attunity_exporter_darwin_amd64-$TRAVIS_TAG
+  - attunity_exporter_windows_amd64*.exe
+  - attunity_exporter_linux_amd64_*
+  - attunity_exporter_darwin_amd64_*
 
   on:
     tags: true

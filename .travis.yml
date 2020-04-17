@@ -11,14 +11,18 @@ script:
   - echo "Starting build"
   - gox -os="linux darwin windows" -arch="amd64" -verbose ./...
   - ls .
+  - mv attunity_exporter_windows_amd64.exe attunity_exporter_windows_amd64-$TRAVIS_TAG.exe
+  - mv attunity_exporter_linux_amd64 attunity_exporter_linux_amd64-$TRAVIS_TAG
+  - mv attunity_exporter_darwin_amd64 attunity_exporter_darwin_amd64-$TRAVIS_TAG
 
 deploy:
   provider: releases
   skip_cleanup: true
   token: $GITHUB_TOKEN
   file:
-  - attunity_exporter_windows_amd64.exe
-  - attunity_exporter_linux_amd64
+  - attunity_exporter_windows_amd64-$TRAVIS_TAG.exe
+  - attunity_exporter_linux_amd64-$TRAVIS_TAG
+  - attunity_exporter_darwin_amd64-$TRAVIS_TAG
 
   on:
     tags: true

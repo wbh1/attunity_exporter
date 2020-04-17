@@ -4,11 +4,11 @@ go:
   - 1.12.x
 
 before_install:
-  - go get github.com/mitchellh/gox
   - go get github.com/konsorten/go-windows-terminal-sequences
 
 script:
   - echo "Starting build"
+  - go clean -r 
   - ./go-build.sh
   - ls .
 

@@ -9,7 +9,7 @@ before_install:
 
 script:
   - echo "Starting build"
-  - gox -os="linux darwin windows" -arch="amd64" -verbose ./...
+  - ./go-build.sh
   - ls .
   - mv attunity_exporter_windows_amd64.exe attunity_exporter_windows_amd64-$TRAVIS_TAG.exe
   - mv attunity_exporter_linux_amd64 attunity_exporter_linux_amd64-$TRAVIS_TAG

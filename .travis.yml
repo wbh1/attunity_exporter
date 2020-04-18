@@ -1,6 +1,6 @@
 language: go
 
-os: osx
+os: linux
 
 go:
   - 1.14.2

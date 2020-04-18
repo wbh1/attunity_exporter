@@ -3,7 +3,7 @@ language: go
 os: osx
 
 go:
-  - 1.12.x
+  - 1.14.2
 
 before_install:
   - go get github.com/konsorten/go-windows-terminal-sequences

@@ -51,6 +51,9 @@ type AttunityCollector struct {
 	// e.g. attunity.example.com
 	APIURL string
 
+	// encoded basic http auth info string
+	auth	string
+
 	// Enterprisemanager.apisessionid header to be included
 	// in all API requests
 	SessionID string
@@ -105,13 +108,25 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		client.Timeout = time.Duration(cfg.Timeout) * time.Second
 	}
 
-	req, err := http.NewRequest("GET", apiURL+"/login", nil)
+	collector := &AttunityCollector{
+		APIURL:        apiURL,
+		auth:	auth,
+		IncludedTasks: cfg.IncludedTasks,
+		ExcludedTasks: cfg.ExcludedTasks,
+		httpClient:    client,
+	}
+	collector.loginAem()
+	return collector
+}
+
+func (collector *AttunityCollector) loginAem() (err error) {
+	req, err := http.NewRequest("GET", collector.APIURL+"/login", nil)
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	req.Header.Set("Authorization", "Basic: "+auth)
+	req.Header.Set("Authorization", "Basic: "+collector.auth)
 
-	resp, err := client.Do(req)
+	resp, err := collector.httpClient.Do(req)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -120,16 +135,8 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		logrus.Fatalf("HTTP %d, PATH: %s; %s", resp.StatusCode, req.URL, body)
 	}
 
-	sessionID := resp.Header.Get("Enterprisemanager.apisessionid")
-
-	return &AttunityCollector{
-		APIURL:        apiURL,
-		SessionID:     sessionID,
-		IncludedTasks: cfg.IncludedTasks,
-		ExcludedTasks: cfg.ExcludedTasks,
-		httpClient:    client,
-	}
-
+	collector.SessionID = resp.Header.Get("Enterprisemanager.apisessionid")
+	return err
 }
 
 func validateConfig(conf Config) (err []error) {
@@ -155,6 +162,10 @@ func (a *AttunityCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the Collect method of the Prometheus Collector interface
 func (a *AttunityCollector) Collect(ch chan<- prometheus.Metric) {
+	// login during each round of collect to ensure session is valid.
+	// This is a little costly, but, error handling is not clean for us to do 
+	// re-login in a clean way
+	a.loginAem()
 
 	// Collect information on what servers are active
 	servers, err := a.servers()

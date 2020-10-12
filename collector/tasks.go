@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	// misc.
 	taskStateDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "server", "task_state"),
 		"Number of tasks broken down by state",
@@ -18,27 +19,337 @@ var (
 		nil,
 	)
 
+	cpuPercentageDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "cpu_percentage"),
+		"The time gap between the original change in the source endpoint and capturing it, in hh:mm:ss",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	memoryMBDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "memory_mb"),
+		"The current utilization of memory, in MB. A task's memory utilization is sampled every 10 seconds. When the task is not running, the value is set to zero (0).",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	discUsageMBDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "disk_usage_mb"),
+		"The current utilization of disk space, in MB. A task's disk utilization is sampled every minute.",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	dataErrorCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "data_error_count"),
+		"The total number of data errors in all tables involved in the task. The count is affected by data errors and the Reset Data Errors option available when you drill down to a task.",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	// cdc_event_counters
+	appliedInsertCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_insert_count"),
+		"The number of records added in total for all tables",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedUpdateCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_update_count"),
+		"The number of records updated in total for all tables",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedDeleteCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_delete_count"),
+		"The number of records deleted in total for all tables",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedDDLCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_ddl_count"),
+		"The total number of metadata changes, such as add column",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	// full_load_counters
+	tablesCompletedCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "tables_completed_count"),
+		"The number of tables that have been loaded into the target endpoint",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	tablesLoadingCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "tables_loading_count"),
+		"The number of tables that are currently being loaded into the target endpoint",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	tablesQueuedCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "tables_queued_count"),
+		"The number of tables that are waiting to be loaded due to an error",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	tablesWithErrorCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "tables_with_error_count"),
+		"The number of tables that could not be loaded due to an error",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	recordsCompletedCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "records_completed_count"),
+		"The total number of records that have completed loading into the target endpoint",
+		[]string{"server", "task", "source", "target"},
+		nil,
+	)
+
+	estimatedRecordsForAllTablesCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "estimated_records_for_all_tables_count"),
+		"The estimated number of records remaining to be loaded into the target endpoint",
+		[]string{"server", "task", "source", "target"},
+		nil,
+	)
+
+	// full_load_throughput
+	sourceThroughputRecordsCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "source_throughput_records_count"),
+		"The current source throughput, in rec/sec",
+		[]string{"server", "task", "source"},
+		nil,
+	)
+
+	sourceThroughputVolumeDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "source_throughput_volume"),
+		"The current source throughput, in kbyte/sec",
+		[]string{"server", "task", "source"},
+		nil,
+	)
+
+	targetThroughputRecordsCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "target_throughput_records_count"),
+		"The current target throughput, in rec/sec",
+		[]string{"server", "task", "target"},
+		nil,
+	)
+
+	targetThroughputVolumeDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "target_throughput_volume"),
+		"The current target throughput, in kbyte/sec",
+		[]string{"server", "task", "target"},
+		nil,
+	)
+
+	// cdc_throughput
+	cdcSourceThroughputRecordsCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "cdc_source_throughput_records_count"),
+		"The current source throughput, in rec/sec",
+		[]string{"server", "task", "source"},
+		nil,
+	)
+
+	cdcSourceThroughputVolumeDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "cdc_source_throughput_volume"),
+		"The current source throughput, in kbyte/sec",
+		[]string{"server", "task", "source"},
+		nil,
+	)
+
+	cdcTargetThroughputRecordsCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "cdc_target_throughput_records_count"),
+		"The current target throughput, in rec/sec",
+		[]string{"server", "task", "target"},
+		nil,
+	)
+
+	cdcTargetThroughputVolumeDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "cdc_target_throughput_volume"),
+		"The current target throughput, in kbyte/sec",
+		[]string{"server", "task", "target"},
+		nil,
+	)
+
+	// cdc_transactions_counters
+	commitChangeRecordsCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "commit_change_records_count"),
+		"The number of COMMIT change records",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	rollbackTransactionCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "rollback_transaction_count"),
+		"The number of ROLLBACK transactions",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	rollbackChangeRecordsCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "rollback_change_records_count"),
+		"The number of ROLLBACK change records",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	rollbackChangeVolumeMBDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "rollback_change_volume_mb"),
+		"The volume of ROLLBACK change, in MB",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedTransactionsInProgressCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_transactions_in_progress_count"),
+		"The number of transactions in progress",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedRecordsInProgressCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_records_in_progress_count"),
+		"The sum of all records/events in all In-Progress transactions",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedCommittedTransactionCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_comitted_transaction_count"),
+		"The number of transactions committed",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedRecordsCommittedCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_records_comitted_count"),
+		"The sum of all records/events in all Completed transactions",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	appliedVolumeCommittedMBDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "applied_volume_comitted_mb"),
+		"The sum of all volume/events in all Completed transactions, in MB",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	incomingAccumulatedChangesInMemoryCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "incoming_accumulated_changes_in_memory_count"),
+		"The number of changes accumulated in memory until source commit",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	incomingAccumulatedChangesOnDiskCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "incoming_accumulated_changes_on_disk_count"),
+		"The number of changes accumulated on disk until source commit",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	incomingApplyingChangesInMemoryCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "incoming_applying_changes_in_memory_count"),
+		"The number of changes in memory during apply and until target commit",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	incomingApplyingChangesOnDiskCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "incoming_applying_changes_on_disk_count"),
+		"The number of changes on disk during apply and until target commit",
+		[]string{"server", "task"},
+		nil,
+	)
+
+	// cdc_latency
 	taskTotalLatencyDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "task", "total_latency_seconds"),
-		"Total latency for this task",
+		"The overall latency (source latency + target latency + apply latency), in hh:mm:ss",
 		[]string{"server", "task", "source", "target"},
 		nil,
 	)
 
 	taskSourceLatencyDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "task", "source_latency_seconds"),
-		"Source latency for this task",
+		"The time gap between the original change in the source endpoint and capturing it, in hh:mm:ss",
 		[]string{"server", "task", "source", "target"},
 		nil,
 	)
 )
 
 type task struct {
-	Name           string     `json:"name"`
-	State          string     `json:"state"`
-	CDCLatency     cdcLatency `json:"cdc_latency"`
-	SourceEndpoint endpoint   `json:"source_endpoint"`
-	TargetEndpoint endpoint   `json:"target_endpoint"`
+	Name                    string                  `json:"name"`
+	State                   string                  `json:"state"`
+	CDCEventCounters        cdcEventCounters        `json:"cdc_event_counters"`
+	FullLoadCounters        fullLoadCounters        `json:"full_load_counters"`
+	FullLoadThroughput      fullLoadThroughput      `json:"full_load_throughput"`
+	CDCThroughput           cdcThroughput           `json:"cdc_throughput"`
+	CDCTransactionsCounters cdcTransactionsCounters `json:"cdc_transactions_counters"`
+	CDCLatency              cdcLatency              `json:"cdc_latency"`
+	SourceEndpoint          endpoint                `json:"source_endpoint"`
+	TargetEndpoint          endpoint                `json:"target_endpoint"`
+	MemoryMB                int                     `json:"memory_mb"`
+	DiskUsageMB             int                     `json:"disk_usage_mb"`
+	DataErrorCount          int                     `json:"data_error_count"`
+	CPUPercentage           int                     `json:"cpu_percentage"`
+}
+
+type cdcEventCounters struct {
+	AppliedInsertCount int `json:"applied_insert_count"`
+	AppliedUpdateCount int `json:"applied_update_count"`
+	AppliedDeleteCount int `json:"applied_delete_count"`
+	AppliedDDLCount    int `json:"applied_ddl_count"`
+}
+
+type fullLoadCounters struct {
+	TablesCompletedCount              int `json:"tables_completed_count"`
+	TablesLoadingCount                int `json:"tables_loading_count"`
+	TablesQueuedCount                 int `json:"tables_queued_count"`
+	TablesWithErrorCount              int `json:"tables_with_error_count"`
+	RecordsCompletedCount             int `json:"records_completed_count"`
+	EstimatedRecordsForAllTablesCount int `json:"estimated_records_for_all_tables_count"`
+}
+
+type fullLoadThroughput struct {
+	SourceThroughputRecordsCount int `json:"source_throughput_records_count"`
+	SourceThroughputVolume       int `json:"source_throughput_volume"`
+	TargetThroughputRecordsCount int `json:"target_throughput_records_count"`
+	TargetThroughputVolume       int `json:"target_throughput_volume"`
+}
+
+type cdcThroughput struct {
+	CDCSourceThroughputRecordsCount currentThroughput `json:"source_throughput_records_count"`
+	CDCSourceThroughputVolume       currentThroughput `json:"source_throughput_volume"`
+	CDCTargetThroughputRecordsCount currentThroughput `json:"target_throughput_records_count"`
+	CDCTargetThroughputVolume       currentThroughput `json:"target_throughput_volume"`
+}
+
+type currentThroughput struct {
+	Throughput int `json:"current"`
+}
+
+type cdcTransactionsCounters struct {
+	CommitChangeRecordsCount                int `json:"commit_change_records_count"`
+	RollbackTransactionCount                int `json:"rollback_transaction_count"`
+	RollbackChangeRecordsCount              int `json:"rollback_change_records_count"`
+	RollbackChangeVolumeMB                  int `json:"rollback_change_volume_mb"`
+	AppliedTransactionsInProgressCount      int `json:"applied_transactions_in_progress_count"`
+	AppliedRecordsInProgressCount           int `json:"applied_records_in_progress_count"`
+	AppliedCommittedTransactionCount        int `json:"applied_comitted_transaction_count"`
+	AppliedRecordsCommittedCount            int `json:"applied_records_comitted_count"`
+	AppliedVolumeCommittedMB                int `json:"applied_volume_comitted_mb"`
+	IncomingAccumulatedChangesInMemoryCount int `json:"incoming_accumulated_changes_in_memory_count"`
+	IncomingAccumulatedChangesOnDiskCount   int `json:"incoming_accumulated_changes_on_disk_count"`
+	IncomingApplyingChangesInMemoryCount    int `json:"incoming_applying_changes_in_memory_count"`
+	IncomingApplyingChangesonDiskCount      int `json:"incoming_applying_changes_on_disk_count"`
 }
 
 type cdcLatency struct {
@@ -147,6 +458,52 @@ func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.
 		ch <- prometheus.MustNewConstMetric(taskSourceLatencyDesc, prometheus.GaugeValue, sl.Seconds(), server, t.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
 	}
 
+	// misc.
+	ch <- prometheus.MustNewConstMetric(cpuPercentageDesc, prometheus.GaugeValue, float64(td.Item.CPUPercentage), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(memoryMBDesc, prometheus.GaugeValue, float64(td.Item.MemoryMB), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(discUsageMBDesc, prometheus.GaugeValue, float64(td.Item.DiskUsageMB), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(dataErrorCountDesc, prometheus.GaugeValue, float64(td.Item.DataErrorCount), server, td.Item.Name)
+
+	// cdc_event_counters
+	ch <- prometheus.MustNewConstMetric(appliedInsertCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedInsertCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedUpdateCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedUpdateCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedDeleteCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedDeleteCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedDDLCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedDDLCount), server, td.Item.Name)
+
+	// full_load_counters
+	ch <- prometheus.MustNewConstMetric(tablesCompletedCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesCompletedCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(tablesLoadingCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesLoadingCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(tablesQueuedCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesQueuedCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(tablesWithErrorCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesWithErrorCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(recordsCompletedCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.RecordsCompletedCount), server, td.Item.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(estimatedRecordsForAllTablesCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.EstimatedRecordsForAllTablesCount), server, td.Item.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
+
+	// full_load_throughput
+	ch <- prometheus.MustNewConstMetric(sourceThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.SourceThroughputRecordsCount), server, td.Item.Name, td.Item.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(sourceThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.SourceThroughputVolume), server, td.Item.Name, td.Item.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(targetThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.TargetThroughputRecordsCount), server, td.Item.Name, td.Item.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(targetThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.TargetThroughputVolume), server, td.Item.Name, td.Item.TargetEndpoint.Name)
+
+	// cdc_throughput
+	ch <- prometheus.MustNewConstMetric(cdcSourceThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCSourceThroughputRecordsCount.Throughput), server, td.Item.Name, td.Item.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(cdcSourceThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCSourceThroughputVolume.Throughput), server, td.Item.Name, td.Item.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(cdcTargetThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCTargetThroughputRecordsCount.Throughput), server, td.Item.Name, td.Item.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(cdcTargetThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCTargetThroughputVolume.Throughput), server, td.Item.Name, td.Item.TargetEndpoint.Name)
+
+	// cdc_transactions_counters
+	ch <- prometheus.MustNewConstMetric(commitChangeRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.CommitChangeRecordsCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(rollbackTransactionCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.RollbackTransactionCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(rollbackChangeRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.RollbackChangeRecordsCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(rollbackChangeVolumeMBDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.RollbackChangeVolumeMB), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedTransactionsInProgressCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedTransactionsInProgressCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedRecordsInProgressCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedRecordsInProgressCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedCommittedTransactionCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedCommittedTransactionCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedRecordsCommittedCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedRecordsCommittedCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedVolumeCommittedMBDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedVolumeCommittedMB), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(incomingAccumulatedChangesInMemoryCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingAccumulatedChangesInMemoryCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(incomingAccumulatedChangesOnDiskCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingAccumulatedChangesOnDiskCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(incomingApplyingChangesInMemoryCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingApplyingChangesInMemoryCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(incomingApplyingChangesOnDiskCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingApplyingChangesonDiskCount), server, td.Item.Name)
 }
 
 func latency(hhmmss string) (time.Duration, error) {

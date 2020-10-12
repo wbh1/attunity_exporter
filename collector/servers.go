@@ -25,6 +25,34 @@ var (
 		[]string{"server"},
 		nil,
 	)
+
+	diskUsageDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "server", "disk_usage_mb"),
+		"The amount of disk space that the server is currently consuming, in MB. This is the sum of disk usage for all tasks on this server",
+		[]string{"server"},
+		nil,
+	)
+
+	memoryUsageDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "server", "memory_usage_mb"),
+		"The amount of memory that the server is currently consuming, in MB. This is the sum of memory usage for all active tasks on this server, excluding stopped tasks",
+		[]string{"server"},
+		nil,
+	)
+
+	attunityCPUPercentageDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "server", "attunity_cpu_percentage"),
+		"The current CPU usage of the Replicate server process + all task processes",
+		[]string{"server"},
+		nil,
+	)
+
+	machineCPUPercentageDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "server", "machine_cpu_percentage"),
+		"The current total CPU usage of all the processes running on the machine",
+		[]string{"server"},
+		nil,
+	)
 )
 
 type server struct {
@@ -35,9 +63,10 @@ type server struct {
 }
 
 type serverDetails struct {
-	Name        string      `json:"name"`
-	License     license     `json:"license"`
-	TaskSummary taskSummary `json:"task_summary"`
+	Name                string              `json:"name"`
+	License             license             `json:"license"`
+	TaskSummary         taskSummary         `json:"task_summary"`
+	ResourceUtilization resourceUtilization `json:"resource_utilization"`
 }
 
 type license struct {
@@ -49,6 +78,13 @@ type taskSummary struct {
 	Stopped    int `json:"stopped"`
 	Recovering int `json:"recovering"`
 	Error      int `json:"error"`
+}
+
+type resourceUtilization struct {
+	DiskUsage   int `json:"disk_usage_mb"`
+	MemoryUsage int `json:"memory_mb"`
+	AttunityCPU int `json:"attunity_cpu_percentage"`
+	MachineCPU  int `json:"machine_cpu_percentage"`
 }
 
 func (a *AttunityCollector) servers() ([]server, error) {
@@ -65,7 +101,6 @@ func (a *AttunityCollector) servers() ([]server, error) {
 	}
 
 	return sl.Items, nil
-
 }
 
 func (a *AttunityCollector) serverDetails(server string) (sd serverDetails, err error) {

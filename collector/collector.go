@@ -52,7 +52,7 @@ type AttunityCollector struct {
 	APIURL string
 
 	// encoded basic http auth info string
-	auth	string
+	auth string
 
 	// Enterprisemanager.apisessionid header to be included
 	// in all API requests
@@ -94,10 +94,9 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 	}
 
 	transport := &http.Transport{
-       		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-    	}
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	client.Transport = transport
-
 
 	if err := validateConfig(*cfg); err != nil {
 		logrus.Fatal("Error validating config file: ", err)
@@ -110,7 +109,7 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 
 	collector := &AttunityCollector{
 		APIURL:        apiURL,
-		auth:	auth,
+		auth:          auth,
 		IncludedTasks: cfg.IncludedTasks,
 		ExcludedTasks: cfg.ExcludedTasks,
 		httpClient:    client,
@@ -163,7 +162,7 @@ func (a *AttunityCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements the Collect method of the Prometheus Collector interface
 func (a *AttunityCollector) Collect(ch chan<- prometheus.Metric) {
 	// login during each round of collect to ensure session is valid.
-	// This is a little costly, but, error handling is not clean for us to do 
+	// This is a little costly, but, error handling is not clean for us to do
 	// re-login in a clean way
 	a.loginAem()
 
@@ -188,6 +187,7 @@ func (a *AttunityCollector) Collect(ch chan<- prometheus.Metric) {
 				logrus.Error(err)
 			} else {
 				for _, t := range taskStates {
+					// fmt.Printf("\n\nTEST:::\n%+v", t)
 					// inspired by: https://github.com/prometheus/node_exporter/blob/v0.18.1/collector/systemd_linux.go#L222
 					for _, tsn := range taskStateNames {
 						value := 0.0
@@ -224,6 +224,12 @@ func (a *AttunityCollector) Collect(ch chan<- prometheus.Metric) {
 
 				// Create metric for license expiration
 				ch <- prometheus.MustNewConstMetric(serverLicenseExpirationDesc, prometheus.GaugeValue, float64(serverDeets.License.DaysToExpiration), s.Name)
+
+				// Create metrics for Resource Utilization
+				ch <- prometheus.MustNewConstMetric(diskUsageDesc, prometheus.GaugeValue, float64(serverDeets.ResourceUtilization.DiskUsage), s.Name)
+				ch <- prometheus.MustNewConstMetric(memoryUsageDesc, prometheus.GaugeValue, float64(serverDeets.ResourceUtilization.MemoryUsage), s.Name)
+				ch <- prometheus.MustNewConstMetric(attunityCPUPercentageDesc, prometheus.GaugeValue, float64(serverDeets.ResourceUtilization.AttunityCPU), s.Name)
+				ch <- prometheus.MustNewConstMetric(machineCPUPercentageDesc, prometheus.GaugeValue, float64(serverDeets.ResourceUtilization.MachineCPU), s.Name)
 			}
 			wg.Done()
 		}(s)
@@ -260,6 +266,8 @@ func (a *AttunityCollector) APIRequest(path string, datastructure interface{}) (
 		err = errors.Wrap(err, string(body))
 		return
 	}
+
+	//fmt.Printf("%+v", datastructure)
 
 	return
 }

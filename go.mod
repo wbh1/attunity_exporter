@@ -1,4 +1,4 @@
-module github.com/wbh1/attunity_exporter
+module github.com/brewkode/attunity_exporter
 
 go 1.12
 

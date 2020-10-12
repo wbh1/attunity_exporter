@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/wbh1/attunity_exporter/collector"
+	"github.com/brewkode/attunity_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

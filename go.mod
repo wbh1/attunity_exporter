@@ -1,4 +1,4 @@
-module github.com/brewkode/attunity_exporter
+module github.com/swphantom/attunity_exporter
 
 go 1.12
 

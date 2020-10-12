@@ -11,8 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/brewkode/attunity_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/swphantom/attunity_exporter/collector"
 )
 
 var (

@@ -2,6 +2,7 @@ user: ""
 password: ""
 weblink: ""
 timeout: 10
+verify_https: false
 included_tasks:
   - server: LUORAGW02
     tasks:

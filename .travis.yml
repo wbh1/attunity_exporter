@@ -1,0 +1,28 @@
+language: go
+
+os: linux
+
+go:
+  - 1.14.2
+
+before_install:
+  - go get github.com/konsorten/go-windows-terminal-sequences
+
+script:
+  - echo "Starting build"
+  - go clean -r 
+  - ./go-build.sh
+  - ls .
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  token: $GITHUB_TOKEN
+  file_glob: true
+  file:
+  - attunity_exporter_windows_amd64*.exe
+  - attunity_exporter_linux_amd64_*
+  - attunity_exporter_darwin_amd64_*
+
+  on:
+    tags: true

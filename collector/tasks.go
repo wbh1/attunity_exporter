@@ -428,13 +428,9 @@ func (a *AttunityCollector) taskStates(server string) ([]task, error) {
 }
 
 func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.Metric) {
-	type taskDetailsList struct {
-		Item task `json:"task"`
-	}
-
 	var (
 		path = "/servers/" + server + "/tasks/" + t.Name
-		td   = taskDetailsList{}
+		td   = task{}
 	)
 
 	if err := a.APIRequest(path, &td); err != nil {
@@ -443,83 +439,88 @@ func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.
 	}
 
 	// Create TotalLatency metric
-	tl, err := latency(td.Item.CDCLatency.TotalLatency)
+	tl, err := latency(td.CDCLatency.TotalLatency)
 	if err != nil {
 		logrus.Error(err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(taskTotalLatencyDesc, prometheus.GaugeValue, tl.Seconds(), server, t.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
+		ch <- prometheus.MustNewConstMetric(taskTotalLatencyDesc, prometheus.GaugeValue, tl.Seconds(), server, t.Name, td.SourceEndpoint.Name, td.TargetEndpoint.Name)
 	}
 
 	// Create SourceLatency metric
-	sl, err := latency(td.Item.CDCLatency.SourceLatency)
+	sl, err := latency(td.CDCLatency.SourceLatency)
 	if err != nil {
 		logrus.Error(err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(taskSourceLatencyDesc, prometheus.GaugeValue, sl.Seconds(), server, t.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
+		ch <- prometheus.MustNewConstMetric(taskSourceLatencyDesc, prometheus.GaugeValue, sl.Seconds(), server, t.Name, td.SourceEndpoint.Name, td.TargetEndpoint.Name)
 	}
 
 	// misc.
-	ch <- prometheus.MustNewConstMetric(cpuPercentageDesc, prometheus.GaugeValue, float64(td.Item.CPUPercentage), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(memoryMBDesc, prometheus.GaugeValue, float64(td.Item.MemoryMB), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(discUsageMBDesc, prometheus.GaugeValue, float64(td.Item.DiskUsageMB), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(dataErrorCountDesc, prometheus.GaugeValue, float64(td.Item.DataErrorCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(cpuPercentageDesc, prometheus.GaugeValue, float64(td.CPUPercentage), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(memoryMBDesc, prometheus.GaugeValue, float64(td.MemoryMB), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(discUsageMBDesc, prometheus.GaugeValue, float64(td.DiskUsageMB), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(dataErrorCountDesc, prometheus.GaugeValue, float64(td.DataErrorCount), server, td.Name)
 
 	// cdc_event_counters
-	ch <- prometheus.MustNewConstMetric(appliedInsertCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedInsertCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedUpdateCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedUpdateCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedDeleteCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedDeleteCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedDDLCountDesc, prometheus.GaugeValue, float64(td.Item.CDCEventCounters.AppliedDDLCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(appliedInsertCountDesc, prometheus.GaugeValue, float64(td.CDCEventCounters.AppliedInsertCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedUpdateCountDesc, prometheus.GaugeValue, float64(td.CDCEventCounters.AppliedUpdateCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedDeleteCountDesc, prometheus.GaugeValue, float64(td.CDCEventCounters.AppliedDeleteCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedDDLCountDesc, prometheus.GaugeValue, float64(td.CDCEventCounters.AppliedDDLCount), server, td.Name)
 
 	// full_load_counters
-	ch <- prometheus.MustNewConstMetric(tablesCompletedCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesCompletedCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(tablesLoadingCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesLoadingCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(tablesQueuedCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesQueuedCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(tablesWithErrorCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.TablesWithErrorCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(recordsCompletedCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.RecordsCompletedCount), server, td.Item.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
-	ch <- prometheus.MustNewConstMetric(estimatedRecordsForAllTablesCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadCounters.EstimatedRecordsForAllTablesCount), server, td.Item.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(tablesCompletedCountDesc, prometheus.GaugeValue, float64(td.FullLoadCounters.TablesCompletedCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(tablesLoadingCountDesc, prometheus.GaugeValue, float64(td.FullLoadCounters.TablesLoadingCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(tablesQueuedCountDesc, prometheus.GaugeValue, float64(td.FullLoadCounters.TablesQueuedCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(tablesWithErrorCountDesc, prometheus.GaugeValue, float64(td.FullLoadCounters.TablesWithErrorCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(recordsCompletedCountDesc, prometheus.GaugeValue, float64(td.FullLoadCounters.RecordsCompletedCount), server, td.Name, td.SourceEndpoint.Name, td.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(estimatedRecordsForAllTablesCountDesc, prometheus.GaugeValue, float64(td.FullLoadCounters.EstimatedRecordsForAllTablesCount), server, td.Name, td.SourceEndpoint.Name, td.TargetEndpoint.Name)
 
 	// full_load_throughput
-	ch <- prometheus.MustNewConstMetric(sourceThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.SourceThroughputRecordsCount), server, td.Item.Name, td.Item.SourceEndpoint.Name)
-	ch <- prometheus.MustNewConstMetric(sourceThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.SourceThroughputVolume), server, td.Item.Name, td.Item.SourceEndpoint.Name)
-	ch <- prometheus.MustNewConstMetric(targetThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.TargetThroughputRecordsCount), server, td.Item.Name, td.Item.TargetEndpoint.Name)
-	ch <- prometheus.MustNewConstMetric(targetThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.FullLoadThroughput.TargetThroughputVolume), server, td.Item.Name, td.Item.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(sourceThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.FullLoadThroughput.SourceThroughputRecordsCount), server, td.Name, td.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(sourceThroughputVolumeDesc, prometheus.GaugeValue, float64(td.FullLoadThroughput.SourceThroughputVolume), server, td.Name, td.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(targetThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.FullLoadThroughput.TargetThroughputRecordsCount), server, td.Name, td.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(targetThroughputVolumeDesc, prometheus.GaugeValue, float64(td.FullLoadThroughput.TargetThroughputVolume), server, td.Name, td.TargetEndpoint.Name)
 
 	// cdc_throughput
-	ch <- prometheus.MustNewConstMetric(cdcSourceThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCSourceThroughputRecordsCount.Throughput), server, td.Item.Name, td.Item.SourceEndpoint.Name)
-	ch <- prometheus.MustNewConstMetric(cdcSourceThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCSourceThroughputVolume.Throughput), server, td.Item.Name, td.Item.SourceEndpoint.Name)
-	ch <- prometheus.MustNewConstMetric(cdcTargetThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCTargetThroughputRecordsCount.Throughput), server, td.Item.Name, td.Item.TargetEndpoint.Name)
-	ch <- prometheus.MustNewConstMetric(cdcTargetThroughputVolumeDesc, prometheus.GaugeValue, float64(td.Item.CDCThroughput.CDCTargetThroughputVolume.Throughput), server, td.Item.Name, td.Item.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(cdcSourceThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.CDCThroughput.CDCSourceThroughputRecordsCount.Throughput), server, td.Name, td.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(cdcSourceThroughputVolumeDesc, prometheus.GaugeValue, float64(td.CDCThroughput.CDCSourceThroughputVolume.Throughput), server, td.Name, td.SourceEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(cdcTargetThroughputRecordsCountDesc, prometheus.GaugeValue, float64(td.CDCThroughput.CDCTargetThroughputRecordsCount.Throughput), server, td.Name, td.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(cdcTargetThroughputVolumeDesc, prometheus.GaugeValue, float64(td.CDCThroughput.CDCTargetThroughputVolume.Throughput), server, td.Name, td.TargetEndpoint.Name)
 
 	// cdc_transactions_counters
-	ch <- prometheus.MustNewConstMetric(commitChangeRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.CommitChangeRecordsCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(rollbackTransactionCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.RollbackTransactionCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(rollbackChangeRecordsCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.RollbackChangeRecordsCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(rollbackChangeVolumeMBDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.RollbackChangeVolumeMB), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedTransactionsInProgressCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedTransactionsInProgressCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedRecordsInProgressCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedRecordsInProgressCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedCommittedTransactionCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedCommittedTransactionCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedRecordsCommittedCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedRecordsCommittedCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(appliedVolumeCommittedMBDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.AppliedVolumeCommittedMB), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(incomingAccumulatedChangesInMemoryCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingAccumulatedChangesInMemoryCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(incomingAccumulatedChangesOnDiskCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingAccumulatedChangesOnDiskCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(incomingApplyingChangesInMemoryCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingApplyingChangesInMemoryCount), server, td.Item.Name)
-	ch <- prometheus.MustNewConstMetric(incomingApplyingChangesOnDiskCountDesc, prometheus.GaugeValue, float64(td.Item.CDCTransactionsCounters.IncomingApplyingChangesonDiskCount), server, td.Item.Name)
+	ch <- prometheus.MustNewConstMetric(commitChangeRecordsCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.CommitChangeRecordsCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(rollbackTransactionCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.RollbackTransactionCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(rollbackChangeRecordsCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.RollbackChangeRecordsCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(rollbackChangeVolumeMBDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.RollbackChangeVolumeMB), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedTransactionsInProgressCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.AppliedTransactionsInProgressCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedRecordsInProgressCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.AppliedRecordsInProgressCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedCommittedTransactionCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.AppliedCommittedTransactionCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedRecordsCommittedCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.AppliedRecordsCommittedCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(appliedVolumeCommittedMBDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.AppliedVolumeCommittedMB), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(incomingAccumulatedChangesInMemoryCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.IncomingAccumulatedChangesInMemoryCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(incomingAccumulatedChangesOnDiskCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.IncomingAccumulatedChangesOnDiskCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(incomingApplyingChangesInMemoryCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.IncomingApplyingChangesInMemoryCount), server, td.Name)
+	ch <- prometheus.MustNewConstMetric(incomingApplyingChangesOnDiskCountDesc, prometheus.GaugeValue, float64(td.CDCTransactionsCounters.IncomingApplyingChangesonDiskCount), server, td.Name)
 }
 
 func latency(hhmmss string) (time.Duration, error) {
 	times := strings.Split(hhmmss, ":")
 	hoursInt, err := strconv.Atoi(times[0])
 	if err != nil {
+		logrus.Error("hours")
+		logrus.Error(hhmmss)
+		logrus.Error(times[0])
 		logrus.Error(err)
 		return time.Second, err
 	}
 	minsInt, err := strconv.Atoi(times[1])
 	if err != nil {
+		logrus.Error("minutes")
 		logrus.Error(err)
 		return time.Second, err
 	}
 	secsInt, err := strconv.Atoi(times[2])
 	if err != nil {
+		logrus.Error("seconds")
 		logrus.Error(err)
 		return time.Second, err
 	}

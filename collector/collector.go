@@ -187,7 +187,6 @@ func (a *AttunityCollector) Collect(ch chan<- prometheus.Metric) {
 				logrus.Error(err)
 			} else {
 				for _, t := range taskStates {
-					// fmt.Printf("\n\nTEST:::\n%+v", t)
 					// inspired by: https://github.com/prometheus/node_exporter/blob/v0.18.1/collector/systemd_linux.go#L222
 					for _, tsn := range taskStateNames {
 						value := 0.0
@@ -261,6 +260,7 @@ func (a *AttunityCollector) APIRequest(path string, datastructure interface{}) (
 	if err != nil {
 		return
 	}
+	//fmt.Printf(string(body))
 
 	if err = json.Unmarshal(body, datastructure); err != nil {
 		err = errors.Wrap(err, string(body))
@@ -268,6 +268,7 @@ func (a *AttunityCollector) APIRequest(path string, datastructure interface{}) (
 	}
 
 	//fmt.Printf("%+v", datastructure)
+	//fmt.Printf("\nFullPath:\n" + a.APIURL + path + "\n")
 
 	return
 }

@@ -12,3 +12,6 @@ excluded_tasks:
   - server: LUORAGW02
     tasks:
       - IPCC
+included_tags:
+  - 01-Production-Non-Oracle-Replication
+  - 01-Production-Oracle-Replication

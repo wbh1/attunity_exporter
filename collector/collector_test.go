@@ -62,7 +62,7 @@ func TestIncluded(t *testing.T) {
 		t.Error("Error unmarshalling config file ", goodConfig, err)
 	}
 
-	a := NewAttunityCollector(&cfg)
+	a := NewAttunityCollector(&cfg, true)
 
 	tasks, err := a.taskStates("xprd04")
 	if err != nil {
@@ -88,7 +88,7 @@ func TestExcluded(t *testing.T) {
 		t.Error("Error unmarshalling config file ", goodConfig, err)
 	}
 
-	a := NewAttunityCollector(&cfg)
+	a := NewAttunityCollector(&cfg, true)
 
 	tasks, err := a.taskStates("LUORAGW02")
 	if err != nil {

@@ -33,6 +33,7 @@ type Config struct {
 	Timeout       int            `yaml:"timeout,omitempty"`
 	IncludedTasks []*TasksFilter `yaml:"included_tasks,omitempty"`
 	ExcludedTasks []*TasksFilter `yaml:"excluded_tasks,omitempty"`
+	IncludedTags  []*string      `yaml:"included_tags,omitempty"`
 }
 
 // TasksFilter is used in the config.yml to specify a set of tasks on a server that
@@ -63,6 +64,7 @@ type AttunityCollector struct {
 	// Takes precedence over IncludedTasks
 	// The key is server name.
 	ExcludedTasks []*TasksFilter
+	IncludedTags  []*string
 
 	// How long to wait for API responses; 0=infinite
 	Timeout int
@@ -73,7 +75,8 @@ type AttunityCollector struct {
 // NewAttunityCollector returns a pointer to an attunityCollector object
 // which implements the Prometheus Collector interface.
 // It should be registered to a Prometheus Registry.
-func NewAttunityCollector(cfg *Config) *AttunityCollector {
+func NewAttunityCollector(cfg *Config, ignoreCert bool) *AttunityCollector {
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: ignoreCert}
 	var (
 		client = &http.Client{}
 		auth   = base64.StdEncoding.EncodeToString([]byte(cfg.Username + ":" + cfg.Password))
@@ -81,10 +84,11 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 	)
 
 	// This is required to force HTTP/1.1
-	// Attunity for some reason advertises HTTP/2 despite not supporting it.
+	// Attunity for some reason advertises HTTP/2 despite not supporting it. :(
 	if !*http2 {
 		transport := &http.Transport{
-			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreCert},
+			TLSNextProto:    make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
 		}
 		client.Transport = transport
 	}
@@ -92,7 +96,6 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 	if err := validateConfig(*cfg); err != nil {
 		logrus.Fatal("Error validating config file: ", err)
 	}
-
 	// Set timeout
 	if cfg.Timeout > 0 {
 		client.Timeout = time.Duration(cfg.Timeout) * time.Second
@@ -120,6 +123,7 @@ func NewAttunityCollector(cfg *Config) *AttunityCollector {
 		SessionID:     sessionID,
 		IncludedTasks: cfg.IncludedTasks,
 		ExcludedTasks: cfg.ExcludedTasks,
+		IncludedTags:  cfg.IncludedTags,
 		httpClient:    client,
 	}
 

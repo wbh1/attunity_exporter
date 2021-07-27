@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,7 +22,7 @@ const (
 
 var (
 	http2          = kingpin.Flag("http2", "Enable HTTP/2 support").Bool()
-	taskStateNames = []string{"RUNNING", "STOPPED", "ERROR", "RECOVERING"}
+	taskStateNames = []string{"RUNNING", "STOPPED", "ERROR", "RECOVERY"}
 )
 
 // Config is the destination type for when the config file gets
@@ -30,6 +31,7 @@ type Config struct {
 	Link          string         `yaml:"weblink"`
 	Username      string         `yaml:"user"`
 	Password      string         `yaml:"password"`
+	IgnoreCert    bool           `yaml:"ignore_cert"`
 	Timeout       int            `yaml:"timeout,omitempty"`
 	IncludedTasks []*TasksFilter `yaml:"included_tasks,omitempty"`
 	ExcludedTasks []*TasksFilter `yaml:"excluded_tasks,omitempty"`
@@ -64,12 +66,16 @@ type AttunityCollector struct {
 	// Takes precedence over IncludedTasks
 	// The key is server name.
 	ExcludedTasks []*TasksFilter
-	IncludedTags  []*string
+
+	// A list of tags to get task details on
+	IncludedTags []*string
 
 	// How long to wait for API responses; 0=infinite
 	Timeout int
 
 	httpClient *http.Client
+
+	auth string
 }
 
 // NewAttunityCollector returns a pointer to an attunityCollector object
@@ -78,29 +84,56 @@ type AttunityCollector struct {
 func NewAttunityCollector(cfg *Config, ignoreCert bool) *AttunityCollector {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: ignoreCert}
 	var (
-		client = &http.Client{}
 		auth   = base64.StdEncoding.EncodeToString([]byte(cfg.Username + ":" + cfg.Password))
 		apiURL = cfg.Link + "/api/v1"
 	)
 
-	// This is required to force HTTP/1.1
-	// Attunity for some reason advertises HTTP/2 despite not supporting it. :(
-	if !*http2 {
-		transport := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreCert},
-			TLSNextProto:    make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
-		}
-		client.Transport = transport
-	}
-
 	if err := validateConfig(*cfg); err != nil {
 		logrus.Fatal("Error validating config file: ", err)
 	}
-	// Set timeout
-	if cfg.Timeout > 0 {
-		client.Timeout = time.Duration(cfg.Timeout) * time.Second
+
+	client, sessionID := configureClient(cfg.Timeout, apiURL, auth, cfg.IgnoreCert)
+
+	return &AttunityCollector{
+		APIURL:        apiURL,
+		SessionID:     sessionID,
+		IncludedTasks: cfg.IncludedTasks,
+		ExcludedTasks: cfg.ExcludedTasks,
+		IncludedTags:  cfg.IncludedTags,
+		httpClient:    client,
+		auth:          auth,
 	}
 
+}
+
+// This is required to force HTTP/1.1
+// Attunity for some reason advertises HTTP/2 despite not supporting it. :(
+
+func configureClient(timeout int, apiURL string, auth string, ignoreCert bool) (*http.Client, string) {
+	client := &http.Client{}
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreCert},
+	}
+	// This is required to force HTTP/1.1
+	// Attunity for some reason advertises HTTP/2 despite not supporting it.
+	if !*http2 {
+		transport.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
+
+	}
+	client.Transport = transport
+
+	// Set timeout
+	if timeout > 0 {
+		client.Timeout = time.Duration(timeout) * time.Second
+	}
+
+	sessionID := getSessionID(client, apiURL, auth)
+
+	return client, sessionID
+
+}
+
+func getSessionID(client *http.Client, apiURL, auth string) string {
 	req, err := http.NewRequest("GET", apiURL+"/login", nil)
 	if err != nil {
 		logrus.Fatal(err)
@@ -116,16 +149,7 @@ func NewAttunityCollector(cfg *Config, ignoreCert bool) *AttunityCollector {
 		logrus.Fatalf("HTTP %d, PATH: %s; %s", resp.StatusCode, req.URL, body)
 	}
 
-	sessionID := resp.Header.Get("Enterprisemanager.apisessionid")
-
-	return &AttunityCollector{
-		APIURL:        apiURL,
-		SessionID:     sessionID,
-		IncludedTasks: cfg.IncludedTasks,
-		ExcludedTasks: cfg.ExcludedTasks,
-		IncludedTags:  cfg.IncludedTags,
-		httpClient:    client,
-	}
+	return resp.Header.Get("Enterprisemanager.apisessionid")
 
 }
 
@@ -147,7 +171,7 @@ func validateConfig(conf Config) (err []error) {
 
 // Describe implements the Describe method of the Prometheus Collector interface
 func (a *AttunityCollector) Describe(ch chan<- *prometheus.Desc) {
-
+	// Hi I do nothing
 }
 
 // Collect implements the Collect method of the Prometheus Collector interface
@@ -156,11 +180,29 @@ func (a *AttunityCollector) Collect(ch chan<- prometheus.Metric) {
 	// Collect information on what servers are active
 	servers, err := a.servers()
 	if err != nil {
-		logrus.Error(err)
-	} else {
-		for _, s := range servers {
-			ch <- prometheus.MustNewConstMetric(serverDesc, prometheus.GaugeValue, 1.0, s.Name, s.State, s.Platform, s.Host)
+
+		// If the error is because the session_id expired, attempt to get a new one and collect info again
+		// else, just fail with an invalid metric containing the error
+		if strings.Contains(err.Error(), "INVALID_SESSION_ID") {
+			a.SessionID = getSessionID(a.httpClient, a.APIURL, a.auth)
+
+			servers, err = a.servers()
+			if err != nil {
+				logrus.Error(err)
+				ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("attunity_error", "Error scraping target", nil, nil), err)
+				return
+			}
+
+		} else {
+			logrus.Error(err)
+			ch <- prometheus.NewInvalidMetric(prometheus.NewDesc("attunity_error", "Error scraping target", nil, nil), err)
+			return
 		}
+
+	} // end error handling for a.servers()
+
+	for _, s := range servers {
+		ch <- prometheus.MustNewConstMetric(serverDesc, prometheus.GaugeValue, 1.0, s.Name, s.State, s.Platform, s.Host)
 	}
 
 	// For each server, concurrently collect detailed information on
@@ -168,6 +210,11 @@ func (a *AttunityCollector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(servers))
 	for _, s := range servers {
+		// If the Server is not monitored, then it will not have any tasks so we can skip this bit.
+		if s.State != "MONITORED" {
+			wg.Done()
+			continue
+		}
 		go func(s server) {
 			taskStates, err := a.taskStates(s.Name)
 			if err != nil {

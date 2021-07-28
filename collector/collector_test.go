@@ -63,7 +63,7 @@ func TestIncluded(t *testing.T) {
 	}
 	cfg.IncludedTags = make([]*string, 0)
 
-	a := NewAttunityCollector(&cfg, true)
+	a := NewAttunityCollector(&cfg)
 
 	tasks, err := a.taskStates("xprd03")
 	if err != nil {
@@ -91,7 +91,7 @@ func TestExcluded(t *testing.T) {
 
 	cfg.IncludedTags = make([]*string, 0)
 
-	a := NewAttunityCollector(&cfg, true)
+	a := NewAttunityCollector(&cfg)
 
 	tasks, err := a.taskStates("LUORAGW02")
 	if err != nil {
@@ -118,7 +118,7 @@ func TestTags(t *testing.T) {
 		t.Error("Error unmarshalling config file ", goodConfig, err)
 	}
 
-	a := NewAttunityCollector(&cfg, true)
+	a := NewAttunityCollector(&cfg)
 
 	tasks, err := a.taskStates("xprd03")
 	if err != nil {

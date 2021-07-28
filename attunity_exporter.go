@@ -17,11 +17,10 @@ import (
 )
 
 var (
-	cfg        = collector.Config{}
-	port       = kingpin.Flag("port", "the port to bind the exporter to.").Default("9103").String()
-	cfgFile    = kingpin.Flag("config-file", "path the config.yml file").Default("config.yml").String()
-	debug      = kingpin.Flag("debug", "Enable debug logging").Bool()
-	ignoreCert = kingpin.Flag("ignore-cert", "Will ignore certificate warnings").Bool()
+	cfg     = collector.Config{}
+	port    = kingpin.Flag("port", "the port to bind the exporter to.").Default("9103").String()
+	cfgFile = kingpin.Flag("config-file", "path the config.yml file").Default("config.yml").String()
+	debug   = kingpin.Flag("debug", "Enable debug logging").Bool()
 )
 
 func main() {
@@ -41,7 +40,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	prometheus.MustRegister(collector.NewAttunityCollector(&cfg, *ignoreCert))
+	prometheus.MustRegister(collector.NewAttunityCollector(&cfg))
 
 	http.Handle("/metrics", promhttp.Handler())
 

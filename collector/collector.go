@@ -81,8 +81,7 @@ type AttunityCollector struct {
 // NewAttunityCollector returns a pointer to an attunityCollector object
 // which implements the Prometheus Collector interface.
 // It should be registered to a Prometheus Registry.
-func NewAttunityCollector(cfg *Config, ignoreCert bool) *AttunityCollector {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: ignoreCert}
+func NewAttunityCollector(cfg *Config) *AttunityCollector {
 	var (
 		auth   = base64.StdEncoding.EncodeToString([]byte(cfg.Username + ":" + cfg.Password))
 		apiURL = cfg.Link + "/api/v1"
@@ -106,16 +105,13 @@ func NewAttunityCollector(cfg *Config, ignoreCert bool) *AttunityCollector {
 
 }
 
-// This is required to force HTTP/1.1
-// Attunity for some reason advertises HTTP/2 despite not supporting it. :(
-
 func configureClient(timeout int, apiURL string, auth string, ignoreCert bool) (*http.Client, string) {
 	client := &http.Client{}
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: ignoreCert},
 	}
 	// This is required to force HTTP/1.1
-	// Attunity for some reason advertises HTTP/2 despite not supporting it.
+	// Attunity for some reason advertises HTTP/2 despite not supporting it. :(
 	if !*http2 {
 		transport.TLSNextProto = make(map[string]func(authority string, c *tls.Conn) http.RoundTripper)
 

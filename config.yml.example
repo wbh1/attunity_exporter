@@ -2,7 +2,7 @@ user: ""
 password: ""
 weblink: ""
 timeout: 10
-ignore_cert: yes
+ignore_cert: true
 included_tasks:
   - server: LUORAGW02
     tasks:

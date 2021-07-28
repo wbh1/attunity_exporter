@@ -2,7 +2,7 @@ user: "***REMOVED***"
 password: "replacethis"
 weblink: "***REMOVED***"
 timeout: 5
-ignore_cert: yes
+ignore_cert: true
 included_tasks:
   - server: LUORAGW02
     tasks:

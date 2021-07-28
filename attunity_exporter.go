@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/wbh1/attunity_exporter/collector"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -23,7 +24,7 @@ var (
 )
 
 func main() {
-	kingpin.Version("v1.1.0")
+	kingpin.Version("v1.2.1")
 	kingpin.Parse()
 
 	if *debug {

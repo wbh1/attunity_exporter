@@ -31,19 +31,35 @@ var (
 		[]string{"server", "task", "source", "target"},
 		nil,
 	)
+
+	fullLoadTablesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "full_load_table_count"),
+		"Full load tables completed for this task",
+		[]string{"server", "task", "source", "target", "state"},
+		nil,
+	)
 )
 
 type task struct {
-	Name           string     `json:"name"`
-	State          string     `json:"state"`
-	CDCLatency     cdcLatency `json:"cdc_latency"`
-	SourceEndpoint endpoint   `json:"source_endpoint"`
-	TargetEndpoint endpoint   `json:"target_endpoint"`
+	Name             string           `json:"name"`
+	State            string           `json:"state"`
+	AssignedTags     []string         `json:"assigned_tags"`
+	CDCLatency       cdcLatency       `json:"cdc_latency"`
+	FullLoadCounters fullLoadCounters `json:"full_load_counters"`
+	SourceEndpoint   endpoint         `json:"source_endpoint"`
+	TargetEndpoint   endpoint         `json:"target_endpoint"`
 }
 
 type cdcLatency struct {
 	SourceLatency string `json:"source_latency"`
 	TotalLatency  string `json:"total_latency"`
+}
+
+type fullLoadCounters struct {
+	TablesCompleted float64 `json:"tables_completed_count"`
+	TablesLoading   float64 `json:"tables_loading_count"`
+	TablesQueued    float64 `json:"tables_queued_count"`
+	TablesErrored   float64 `json:"tables_with_error_count"`
 }
 
 type endpoint struct {
@@ -91,61 +107,63 @@ func (a *AttunityCollector) taskStates(server string) ([]task, error) {
 		return nil, nil
 	}
 
-	if len(*excl) > 0 || len(*incl) > 0 {
-		var filtered []task
-
-		if len(*excl) > 0 && len(*incl) > 0 {
-			filtered = filterIncluded(&tl.Items, *incl)
-			// Must filter excluded after you filter the included
-			// using the slice returned by filterIncluded
-			filtered = filterExcluded(&filtered, *excl)
-
-		} else if len(*excl) > 0 {
-			filtered = filterExcluded(&tl.Items, *excl)
-
-		} else if len(*incl) > 0 {
-			filtered = filterIncluded(&tl.Items, *incl)
-
-		}
-
-		return filtered, nil
+	// Do filtering
+	filtered := tl.Items
+	if len(a.IncludedTags) > 0 {
+		filterIncludedTags(&filtered, a.IncludedTags)
+	}
+	if len(*incl) > 0 {
+		filterIncluded(&filtered, *incl)
+	}
+	if len(*excl) > 0 {
+		filterExcluded(&filtered, *excl)
 	}
 
-	// If no includes/excludes are specified, return the whole task list
-	return tl.Items, nil
+	return filtered, nil
 
 }
 
 func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.Metric) {
-	type taskDetailsList struct {
-		Item task `json:"task"`
-	}
-
 	var (
 		path = "/servers/" + server + "/tasks/" + t.Name
-		td   = taskDetailsList{}
 	)
 
-	if err := a.APIRequest(path, &td); err != nil {
+	if err := a.APIRequest(path, &t); err != nil {
 		logrus.Error(err)
 		return
 	}
 
 	// Create TotalLatency metric
-	tl, err := latency(td.Item.CDCLatency.TotalLatency)
+	tl, err := latency(t.CDCLatency.TotalLatency)
 	if err != nil {
 		logrus.Error(err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(taskTotalLatencyDesc, prometheus.GaugeValue, tl.Seconds(), server, t.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
+		ch <- prometheus.MustNewConstMetric(taskTotalLatencyDesc, prometheus.GaugeValue, tl.Seconds(), server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)
 	}
 
 	// Create SourceLatency metric
-	sl, err := latency(td.Item.CDCLatency.SourceLatency)
+	sl, err := latency(t.CDCLatency.SourceLatency)
 	if err != nil {
 		logrus.Error(err)
 	} else {
-		ch <- prometheus.MustNewConstMetric(taskSourceLatencyDesc, prometheus.GaugeValue, sl.Seconds(), server, t.Name, td.Item.SourceEndpoint.Name, td.Item.TargetEndpoint.Name)
+		ch <- prometheus.MustNewConstMetric(taskSourceLatencyDesc, prometheus.GaugeValue, sl.Seconds(), server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)
 	}
+
+	/*
+		Create metrics for full load of tables...
+	*/
+
+	// Completed
+	ch <- prometheus.MustNewConstMetric(fullLoadTablesDesc, prometheus.GaugeValue, t.FullLoadCounters.TablesCompleted, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name, "completed")
+
+	// Loading
+	ch <- prometheus.MustNewConstMetric(fullLoadTablesDesc, prometheus.GaugeValue, t.FullLoadCounters.TablesLoading, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name, "loading")
+
+	// Queued
+	ch <- prometheus.MustNewConstMetric(fullLoadTablesDesc, prometheus.GaugeValue, t.FullLoadCounters.TablesQueued, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name, "queued")
+
+	// Errored
+	ch <- prometheus.MustNewConstMetric(fullLoadTablesDesc, prometheus.GaugeValue, t.FullLoadCounters.TablesErrored, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name, "error")
 
 }
 
@@ -171,7 +189,7 @@ func latency(hhmmss string) (time.Duration, error) {
 	return latency, nil
 }
 
-func filterExcluded(tl *[]task, excluded []string) []task {
+func filterExcluded(tl *[]task, excluded []string) {
 	filtered := *tl
 	lastIndex := (len(filtered) - 1)
 
@@ -231,13 +249,13 @@ func filterExcluded(tl *[]task, excluded []string) []task {
 		// Log an error if the regex didn't match any tasks.
 		// This should warn users if they're providing a useless regex.
 		if !matched {
-			logrus.Error("No task found to exclude matching: ", regexString)
+			logrus.Warn("No task found to exclude matching: ", regexString)
 		}
 	}
-	return filtered
+	*tl = filtered
 }
 
-func filterIncluded(tl *[]task, included []string) []task {
+func filterIncluded(tl *[]task, included []string) {
 	var filtered []task
 	for _, regexString := range included {
 		regex, err := regexp.Compile(regexString)
@@ -257,5 +275,29 @@ func filterIncluded(tl *[]task, included []string) []task {
 			logrus.Error("No task found to include matching: ", regexString)
 		}
 	}
-	return filtered
+
+	*tl = filtered
+
+}
+
+func filterIncludedTags(tl *[]task, tags []*string) {
+	var filtered []task
+	for _, task := range *tl {
+		matched := false
+		for _, taskTag := range task.AssignedTags {
+			for _, tag := range tags {
+				if *tag == taskTag {
+					matched = true
+					continue
+				}
+			}
+		}
+
+		if matched == true {
+			filtered = append(filtered, task)
+		}
+	}
+
+	*tl = filtered
+
 }

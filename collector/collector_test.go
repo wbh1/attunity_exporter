@@ -61,15 +61,16 @@ func TestIncluded(t *testing.T) {
 	if err = yaml.UnmarshalStrict(f, &cfg); err != nil {
 		t.Error("Error unmarshalling config file ", goodConfig, err)
 	}
+	cfg.IncludedTags = make([]*string, 0)
 
 	a := NewAttunityCollector(&cfg)
 
-	tasks, err := a.taskStates("xprd04")
+	tasks, err := a.taskStates("xprd03")
 	if err != nil {
 		t.Error(err)
 	}
-	if len(tasks) > 1 {
-		t.Error("More tasks returned than expected. Should only return BIZFLW-WHPRD on xprd04")
+	if len(tasks) != 1 {
+		t.Error("More/less tasks returned than expected. Should only return BIZFLW-WHPRD on xprd03", tasks)
 	}
 
 }
@@ -88,6 +89,8 @@ func TestExcluded(t *testing.T) {
 		t.Error("Error unmarshalling config file ", goodConfig, err)
 	}
 
+	cfg.IncludedTags = make([]*string, 0)
+
 	a := NewAttunityCollector(&cfg)
 
 	tasks, err := a.taskStates("LUORAGW02")
@@ -98,6 +101,33 @@ func TestExcluded(t *testing.T) {
 		if x.Name == "IPCC" {
 			t.Error("Excluded task was returned in results.")
 		}
+	}
+
+}
+
+func TestTags(t *testing.T) {
+	var (
+		cfg        = Config{}
+		goodConfig = "../testdata/config.good.yml"
+	)
+	f, err := ioutil.ReadFile(goodConfig)
+	if err != nil {
+		t.Error(err)
+	}
+	if err = yaml.UnmarshalStrict(f, &cfg); err != nil {
+		t.Error("Error unmarshalling config file ", goodConfig, err)
+	}
+
+	a := NewAttunityCollector(&cfg)
+
+	tasks, err := a.taskStates("xprd03")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(tasks) > 0 {
+		t.Error("No tasks should be returned by this tag filter")
+		t.Error(tasks)
 	}
 
 }

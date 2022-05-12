@@ -25,19 +25,19 @@ var (
 		nil,
 	)
 	taskTotalIncChgDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "task", "total_inc_changes"),
+		prometheus.BuildFQName(namespace, "task", "inc_changes_total"),
 		"Total incoming changes for this task",
 		[]string{"server", "task", "source", "target"},
 		nil,
 	)
 	taskAccumIncChgDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "task", "total_inc_accumulated_changes"),
+		prometheus.BuildFQName(namespace, "task", "inc_accumulated_changes_total"),
 		"Total incoming accumulated changes for this task",
 		[]string{"server", "task", "source", "target"},
 		nil,
 	)
 	taskApplyIncChgDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "task", "total_inc_apply_changes"),
+		prometheus.BuildFQName(namespace, "task", "inc_apply_changes_total"),
 		"Total incoming applying changes for this task",
 		[]string{"server", "task", "source", "target"},
 		nil,
@@ -188,7 +188,7 @@ func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.
 	// Errored
 	ch <- prometheus.MustNewConstMetric(fullLoadTablesDesc, prometheus.GaugeValue, t.FullLoadCounters.TablesErrored, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name, "error")
 
-	//Incoming Changes
+	// Incoming Changes
 	totalAccum := t.CDCTransCounter.AccumulatedInDisk + t.CDCTransCounter.AccumlatedInMem
 	totalApplied := t.CDCTransCounter.AppliedInDisk + t.CDCTransCounter.AppliedInMem
 	ch <- prometheus.MustNewConstMetric(taskApplyIncChgDesc, prometheus.GaugeValue, totalApplied, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)

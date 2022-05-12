@@ -24,7 +24,24 @@ var (
 		[]string{"server", "task", "source", "target"},
 		nil,
 	)
-
+	taskTotalIncChgDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "total_inc_changes"),
+		"Total incoming changes for this task",
+		[]string{"server", "task", "source", "target"},
+		nil,
+	)
+	taskAccumIncChgDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "total_inc_accumulated_changes"),
+		"Total incoming accumulated changes for this task",
+		[]string{"server", "task", "source", "target"},
+		nil,
+	)
+	taskApplyIncChgDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "task", "total_inc_apply_changes"),
+		"Total incoming applying changes for this task",
+		[]string{"server", "task", "source", "target"},
+		nil,
+	)
 	taskSourceLatencyDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "task", "source_latency_seconds"),
 		"Source latency for this task",
@@ -45,6 +62,7 @@ type task struct {
 	State            string           `json:"state"`
 	AssignedTags     []string         `json:"assigned_tags"`
 	CDCLatency       cdcLatency       `json:"cdc_latency"`
+	CDCTransCounter  cdcTransCounter  `json:"cdc_transactions_counters"`
 	FullLoadCounters fullLoadCounters `json:"full_load_counters"`
 	SourceEndpoint   endpoint         `json:"source_endpoint"`
 	TargetEndpoint   endpoint         `json:"target_endpoint"`
@@ -54,7 +72,12 @@ type cdcLatency struct {
 	SourceLatency string `json:"source_latency"`
 	TotalLatency  string `json:"total_latency"`
 }
-
+type cdcTransCounter struct {
+	AccumlatedInMem   float64 `json:"incoming_accumulated_changes_in_memory_count"`
+	AccumulatedInDisk float64 `json:"incoming_accumulated_changes_on_disk_count"`
+	AppliedInMem      float64 `json:"incoming_applying_changes_in_memory_count"`
+	AppliedInDisk     float64 `json:"incoming_applying_changes_on_disk_count"`
+}
 type fullLoadCounters struct {
 	TablesCompleted float64 `json:"tables_completed_count"`
 	TablesLoading   float64 `json:"tables_loading_count"`
@@ -164,6 +187,13 @@ func (t task) details(server string, a *AttunityCollector, ch chan<- prometheus.
 
 	// Errored
 	ch <- prometheus.MustNewConstMetric(fullLoadTablesDesc, prometheus.GaugeValue, t.FullLoadCounters.TablesErrored, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name, "error")
+
+	//Incoming Changes
+	totalAccum := t.CDCTransCounter.AccumulatedInDisk + t.CDCTransCounter.AccumlatedInMem
+	totalApplied := t.CDCTransCounter.AppliedInDisk + t.CDCTransCounter.AppliedInMem
+	ch <- prometheus.MustNewConstMetric(taskApplyIncChgDesc, prometheus.GaugeValue, totalApplied, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(taskAccumIncChgDesc, prometheus.GaugeValue, totalAccum, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)
+	ch <- prometheus.MustNewConstMetric(taskTotalIncChgDesc, prometheus.GaugeValue, totalAccum+totalApplied, server, t.Name, t.SourceEndpoint.Name, t.TargetEndpoint.Name)
 
 }
 
